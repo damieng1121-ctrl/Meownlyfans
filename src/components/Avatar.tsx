@@ -16,7 +16,7 @@ export function Avatar({
   className?: string;
 }) {
   const style = { width: size, height: size, fontSize: size * 0.42 };
-  const cls = clsx("shrink-0 rounded-full border-2 border-white object-cover shadow-sm", className);
+  const cls = clsx("shrink-0 rounded-full border-2 border-paper object-cover shadow-sm", className);
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={src} alt={name} style={style} className={cls} />;

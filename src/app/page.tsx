@@ -23,7 +23,7 @@ export default async function FeedPage(props: PageProps<"/">) {
       {!user && (
         <section className="card mb-8 flex flex-col items-center gap-6 p-6 sm:flex-row sm:p-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.webp" alt="Meownly Fans" width={180} height={180} className="h-44 w-44 shrink-0" />
+          <img src="/logo-mark.webp" alt="Meownly Fans" width={640} height={561} className="logo-mark h-auto w-52 shrink-0" />
           <div className="text-center sm:text-left">
             <h1 className="text-3xl font-extrabold sm:text-4xl">The internet runs on cats. Now they have their own place.</h1>
             <p className="mt-3 text-lg text-ink-soft">
@@ -44,7 +44,7 @@ export default async function FeedPage(props: PageProps<"/">) {
             href={t.id === "latest" ? "/" : `/?tab=${t.id}`}
             className={clsx(
               "btn shrink-0",
-              tab === t.id ? "bg-ink text-white" : "border border-line bg-paper hover:bg-cream",
+              tab === t.id ? "bg-ink text-cream" : "border border-line bg-paper hover:bg-cream",
             )}
           >
             {t.label}

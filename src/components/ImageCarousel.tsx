@@ -17,7 +17,7 @@ export function ImageCarousel({ images, alt }: { images: { id: string; url: stri
             type="button"
             aria-label="Previous photo"
             onClick={() => setI((i - 1 + images.length) % images.length)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 shadow"
+            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-[#0b1a22] shadow"
           >
             <ChevronLeft size={20} />
           </button>
@@ -25,7 +25,7 @@ export function ImageCarousel({ images, alt }: { images: { id: string; url: stri
             type="button"
             aria-label="Next photo"
             onClick={() => setI((i + 1) % images.length)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 shadow"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/85 p-1.5 text-[#0b1a22] shadow"
           >
             <ChevronRight size={20} />
           </button>

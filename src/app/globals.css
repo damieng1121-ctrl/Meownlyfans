@@ -1,21 +1,55 @@
 @import "tailwindcss";
 
-@theme {
-  --color-ink: #0b1a22;
-  --color-ink-soft: #3c4c55;
-  --color-cream: #fdfbf5;
-  --color-paper: #ffffff;
-  --color-line: #ebe5d6;
-  --color-paw: #2f93c9;
-  --color-paw-dark: #1f74a3;
-  --color-blush: #f7b6b8;
-  --color-heart: #e0475a;
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Colour tokens. Components use these names, so dark mode only redefines them. */
+:root {
+  --ink: #0b1a22;
+  --ink-soft: #4a5a63;
+  --cream: #fdfbf5;
+  --paper: #ffffff;
+  --line: #ebe5d6;
+  --paw: #2f93c9;
+  --paw-dark: #1f74a3;
+  --heart: #e0475a;
+  --logo-outline: none;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --ink: #f3efe6;
+  --ink-soft: #a3b2ba;
+  --cream: #0f1c24;
+  --paper: #172833;
+  --line: #263b47;
+  --paw: #4aaee3;
+  --paw-dark: #2f93c9;
+  --heart: #ff6b7d;
+  --logo-outline: drop-shadow(1px 0 0 #fdfbf5) drop-shadow(-1px 0 0 #fdfbf5) drop-shadow(0 1px 0 #fdfbf5)
+    drop-shadow(0 -1px 0 #fdfbf5);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-cream: var(--cream);
+  --color-paper: var(--paper);
+  --color-line: var(--line);
+  --color-paw: var(--paw);
+  --color-paw-dark: var(--paw-dark);
+  --color-heart: var(--heart);
   --font-sans: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, sans-serif;
 }
 
+.logo-mark {
+  filter: var(--logo-outline);
+}
+
 body {
-  background: var(--color-cream);
-  color: var(--color-ink);
+  background: var(--cream);
+  color: var(--ink);
+  transition: background-color 0.25s, color 0.25s;
 }
 
 @utility btn {
@@ -28,11 +62,37 @@ body {
   @apply btn border border-line bg-paper text-ink hover:bg-cream;
 }
 @utility card {
-  @apply rounded-3xl border border-line bg-paper shadow-[0_1px_0_#ebe5d6];
+  @apply rounded-3xl border border-line bg-paper shadow-[0_1px_0_var(--line)];
 }
 @utility input {
   @apply w-full rounded-2xl border border-line bg-paper px-4 py-2.5 text-base outline-none focus:border-paw focus:ring-2 focus:ring-paw/20;
 }
 @utility label {
   @apply mb-1 block text-sm font-semibold text-ink-soft;
+}
+
+/* Little paw prints that float up when you like a post */
+@keyframes paw-float {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.6) rotate(var(--r, 0deg)); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), -46px) scale(1.1) rotate(var(--r, 0deg)); }
+}
+.paw-burst {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  pointer-events: none;
+  animation: paw-float 0.9s ease-out forwards;
+}
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1.1); }
+}
+.heart-pop {
+  animation: heart-pop 0.35s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .paw-burst, .heart-pop { animation: none; display: none; }
+  .heart-pop { display: inline; }
 }

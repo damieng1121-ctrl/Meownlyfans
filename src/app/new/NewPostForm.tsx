@@ -73,7 +73,7 @@ export function NewPostForm({ cats, defaultCatId }: { cats: { id: string; name: 
                 type="button"
                 onClick={() => remove(i)}
                 aria-label="Remove photo"
-                className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 shadow"
+                className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 text-[#0b1a22] shadow"
               >
                 <X size={16} />
               </button>
