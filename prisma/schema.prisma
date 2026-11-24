@@ -113,3 +113,11 @@ model Follow {
   @@id([userId, catId])
   @@index([catId])
 }
+
+/// Uploaded photo bytes. Kept in Postgres so the app needs no separate file storage.
+model StoredImage {
+  id          String   @id
+  contentType String
+  data        Bytes
+  createdAt   DateTime @default(now())
+}

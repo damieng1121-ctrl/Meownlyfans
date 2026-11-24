@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Camera } from "lucide-react";
 import { saveCat } from "@/app/actions";
+import { shrinkInputFile } from "@/lib/shrinkImage";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 import { Avatar } from "@/components/Avatar";
@@ -29,8 +30,10 @@ export function CatForm({ cat }: { cat?: Cat }) {
           name="avatar"
           accept="image/jpeg,image/png,image/gif,image/webp"
           className="sr-only"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
+          onChange={async (e) => {
+            const input = e.currentTarget;
+            await shrinkInputFile(input, 600);
+            const f = input.files?.[0];
             if (f) setPreview(URL.createObjectURL(f));
           }}
         />

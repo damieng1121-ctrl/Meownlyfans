@@ -30,14 +30,19 @@ npm run dev                 # http://localhost:3000
 
 ## Photo storage
 
-Uploads are checked by their file contents (JPEG/PNG/GIF/WebP, max 8 MB) and
-saved to `UPLOAD_DIR` (default `./uploads`), served from `/uploads/...`.
-This works on any host with a persistent disk (a VPS, Railway/Render/Fly with a
-volume, Docker). For serverless hosts like Vercel, swap the two functions in
-`src/lib/storage.ts` for a cloud bucket (S3, R2, Vercel Blob…); nothing else
-touches the filesystem.
+Browsers shrink photos before upload (longest side 1600px). The server then
+checks each file's contents (JPEG/PNG/GIF/WebP, max 4 MB) and stores it in the
+database (`StoredImage` table), served from `/uploads/...`. So the only thing
+the app needs is `DATABASE_URL`, and it runs on Vercel or any other host. For
+heavy traffic, swap the functions in `src/lib/storage.ts` for a cloud bucket.
 
 ## Deploy
+
+**Vercel:** import the GitHub repo at vercel.com/new, add a `DATABASE_URL`
+environment variable, and deploy. Create the tables once with `npm run db:push`
+(run locally with `DATABASE_URL` pointing at the production database).
+
+**Anywhere else:**
 
 ```bash
 npm run build

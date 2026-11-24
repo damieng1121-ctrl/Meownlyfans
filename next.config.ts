@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Room for up to 6 photos of 8 MB each, plus multipart overhead
-    serverActions: { bodySizeLimit: "50mb" },
+    // Up to 6 photos of 4 MB each (Vercel itself caps requests at 4.5 MB)
+    serverActions: { bodySizeLimit: "30mb" },
   },
 };
 

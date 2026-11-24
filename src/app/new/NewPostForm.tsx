@@ -3,11 +3,12 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 import { createPost } from "@/app/actions";
+import { shrinkImage } from "@/lib/shrinkImage";
 import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 
 const MAX = 6;
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 4 * 1024 * 1024;
 
 type Picked = { file: File; url: string };
 
@@ -15,6 +16,7 @@ export function NewPostForm({ cats, defaultCatId }: { cats: { id: string; name: 
   const [state, formAction] = useActionState(createPost, undefined);
   const [picked, setPicked] = useState<Picked[]>([]);
   const [localError, setLocalError] = useState<string>();
+  const [preparing, setPreparing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pickedRef = useRef(picked);
   useEffect(() => {
@@ -22,24 +24,28 @@ export function NewPostForm({ cats, defaultCatId }: { cats: { id: string; name: 
   }, [picked]);
   useEffect(() => () => pickedRef.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
 
-  function add(files: FileList | null) {
+  async function add(files: FileList | null) {
     if (!files) return;
     setLocalError(undefined);
+    const chosen = Array.from(files);
+    if (inputRef.current) inputRef.current.value = "";
     const next = [...picked];
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("image/")) continue;
-      if (file.size > MAX_BYTES) {
-        setLocalError(`"${file.name}" is over 8 MB.`);
-        continue;
-      }
+    setPreparing(true);
+    for (const original of chosen) {
+      if (!original.type.startsWith("image/")) continue;
       if (next.length >= MAX) {
         setLocalError(`Up to ${MAX} photos per post.`);
         break;
       }
+      const file = await shrinkImage(original);
+      if (file.size > MAX_BYTES) {
+        setLocalError(`"${file.name}" is over 4 MB.`);
+        continue;
+      }
       next.push({ file, url: URL.createObjectURL(file) });
     }
     setPicked(next);
-    if (inputRef.current) inputRef.current.value = "";
+    setPreparing(false);
   }
 
   function remove(i: number) {
@@ -116,7 +122,11 @@ export function NewPostForm({ cats, defaultCatId }: { cats: { id: string; name: 
       </div>
 
       <FormError error={localError ?? state?.error} />
-      <SubmitButton className="btn-primary w-full py-3" pendingText="Uploading…">Share with the fans</SubmitButton>
+      {preparing ? (
+        <button type="button" disabled className="btn-primary w-full py-3">Preparing photos…</button>
+      ) : (
+        <SubmitButton className="btn-primary w-full py-3" pendingText="Uploading…">Share with the fans</SubmitButton>
+      )}
     </form>
   );
 }
