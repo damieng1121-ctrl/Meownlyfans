@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
+  passwordHash String
+  displayName  String
+  bio          String    @default("")
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  cats         Cat[]
+  posts        Post[]
+  likes        Like[]
+  comments     Comment[]
+  follows      Follow[]
+}
+
+model Session {
+  id        String   @id // sha256 of the cookie token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Cat {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  breed     String   @default("")
+  age       String   @default("")
+  bio       String   @default("")
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  posts     Post[]
+  followers Follow[]
+
+  @@index([ownerId])
+}
+
+model Post {
+  id        String      @id @default(cuid())
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  catId     String?
+  cat       Cat?        @relation(fields: [catId], references: [id], onDelete: SetNull)
+  caption   String      @default("")
+  createdAt DateTime    @default(now())
+  images    PostImage[]
+  likes     Like[]
+  comments  Comment[]
+
+  @@index([createdAt])
+  @@index([catId])
+  @@index([authorId])
+}
+
+model PostImage {
+  id       String @id @default(cuid())
+  postId   String
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  url      String
+  position Int    @default(0)
+
+  @@index([postId])
+}
+
+model Like {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@index([postId, createdAt])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("Replies")
+  body      String
+  createdAt DateTime  @default(now())
+
+  @@index([postId, createdAt])
+}
+
+model Follow {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catId     String
+  cat       Cat      @relation(fields: [catId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, catId])
+  @@index([catId])
+}
