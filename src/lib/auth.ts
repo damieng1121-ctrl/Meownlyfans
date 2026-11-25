@@ -36,10 +36,12 @@ export const getCurrentUser = cache(async () => {
   const session = await db.session.findUnique({
     where: { id: hash(token) },
     include: {
-      user: { select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true } },
+      user: {
+        select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true, isAdmin: true, bannedAt: true },
+      },
     },
   });
-  if (!session || session.expiresAt < new Date()) return null;
+  if (!session || session.expiresAt < new Date() || session.user.bannedAt) return null;
   return session.user;
 });
 

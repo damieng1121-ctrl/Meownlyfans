@@ -18,6 +18,9 @@ export default async function NewPostPage(props: PageProps<"/new">) {
   return (
     <div className="card mx-auto max-w-xl p-6 sm:p-8">
       <h1 className="text-2xl font-extrabold">Post a cat 📸</h1>
+      <p className="mt-1 text-sm text-ink-soft">
+        Cats only, and keep it family-friendly. Every photo is checked before it goes up.
+      </p>
       {cats.length === 0 && (
         <p className="mt-2 rounded-2xl bg-paw/10 px-4 py-3 text-sm">
           Tip: <Link href="/cats/new" className="font-semibold text-paw">add your cat&apos;s profile</Link> first so

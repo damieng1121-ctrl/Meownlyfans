@@ -5,11 +5,25 @@ import { timeAgo } from "@/lib/utils";
 import { Avatar } from "./Avatar";
 import { ImageCarousel } from "./ImageCarousel";
 import { LikeButton } from "./LikeButton";
+import { ReportButton } from "./ReportButton";
 
-export function PostCard({ post, full = false }: { post: FeedPost; full?: boolean }) {
+export function PostCard({
+  post,
+  viewerId,
+  full = false,
+}: {
+  post: FeedPost;
+  viewerId: string | null;
+  full?: boolean;
+}) {
   const who = post.cat?.name ?? post.author.displayName;
   return (
     <article className="card overflow-hidden">
+      {post.hidden && (
+        <p className="bg-heart/10 px-4 py-2 text-sm font-semibold text-heart">
+          Hidden from everyone else while it&apos;s reviewed
+        </p>
+      )}
       <div className="flex items-center gap-3 p-3">
         {post.cat ? (
           <Link href={`/c/${post.cat.id}`}>
@@ -20,7 +34,7 @@ export function PostCard({ post, full = false }: { post: FeedPost; full?: boolea
             <Avatar src={post.author.avatarUrl} name={post.author.displayName} />
           </Link>
         )}
-        <div className="min-w-0 leading-tight">
+        <div className="min-w-0 flex-1 leading-tight">
           {post.cat ? (
             <Link href={`/c/${post.cat.id}`} className="font-bold hover:underline">{post.cat.name}</Link>
           ) : (
@@ -39,6 +53,7 @@ export function PostCard({ post, full = false }: { post: FeedPost; full?: boolea
             </Link>
           </div>
         </div>
+        {viewerId !== post.authorId && <ReportButton target={{ postId: post.id }} />}
       </div>
 
       {full ? (

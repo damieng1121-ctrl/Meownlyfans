@@ -8,7 +8,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { FormError } from "@/components/FormError";
 
 const MAX = 6;
-const MAX_BYTES = 4 * 1024 * 1024;
+const MAX_BYTES = 3.5 * 1024 * 1024;
 
 type Picked = { file: File; url: string };
 
@@ -39,7 +39,7 @@ export function NewPostForm({ cats, defaultCatId }: { cats: { id: string; name: 
       }
       const file = await shrinkImage(original);
       if (file.size > MAX_BYTES) {
-        setLocalError(`"${file.name}" is over 4 MB.`);
+        setLocalError(`"${file.name}" is too big (max 3.5 MB).`);
         continue;
       }
       next.push({ file, url: URL.createObjectURL(file) });
@@ -125,7 +125,7 @@ export function NewPostForm({ cats, defaultCatId }: { cats: { id: string; name: 
       {preparing ? (
         <button type="button" disabled className="btn-primary w-full py-3">Preparing photos…</button>
       ) : (
-        <SubmitButton className="btn-primary w-full py-3" pendingText="Uploading…">Share with the fans</SubmitButton>
+        <SubmitButton className="btn-primary w-full py-3" pendingText="Checking photos…">Share with the fans</SubmitButton>
       )}
     </form>
   );

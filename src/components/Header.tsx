@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Plus, LogOut, Settings } from "lucide-react";
+import { Plus, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { logout } from "@/app/actions";
 import { Avatar } from "./Avatar";
@@ -7,6 +8,9 @@ import { ThemeToggle } from "./ThemeToggle";
 
 export async function Header() {
   const user = await getCurrentUser();
+  const openReports = user?.isAdmin
+    ? (await db.report.groupBy({ by: ["postId", "commentId"], where: { resolvedAt: null } })).length
+    : 0;
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-cream/90 backdrop-blur">
       <div className="mx-auto flex h-20 max-w-5xl items-center gap-2 px-4 sm:h-24 sm:gap-3">
@@ -21,6 +25,16 @@ export async function Header() {
               <Link href="/new" className="btn-primary">
                 <Plus size={18} /> <span className="hidden sm:inline">Post a cat</span>
               </Link>
+              {user.isAdmin && (
+                <Link href="/admin" title="Moderation" className="relative rounded-full p-2 text-ink-soft hover:bg-paper hover:text-ink">
+                  <ShieldCheck size={22} />
+                  {openReports > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 min-w-5 rounded-full bg-heart px-1 text-center text-xs font-bold leading-5 text-white">
+                      {openReports}
+                    </span>
+                  )}
+                </Link>
+              )}
               <Link href={`/u/${user.username}`} title="Your profile" className="rounded-full">
                 <Avatar src={user.avatarUrl} name={user.displayName} size={36} />
               </Link>

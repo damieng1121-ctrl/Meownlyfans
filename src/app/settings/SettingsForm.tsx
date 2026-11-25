@@ -41,7 +41,7 @@ export function SettingsForm({ user }: { user: { displayName: string; bio: strin
         <textarea id="bio" name="bio" rows={3} maxLength={300} defaultValue={state?.values?.bio ?? user.bio} className="input resize-y" placeholder="Cat parent of 3. Professional lap." />
       </div>
       <FormError error={state?.error} />
-      <SubmitButton className="btn-primary w-full py-3">Save</SubmitButton>
+      <SubmitButton className="btn-primary w-full py-3" pendingText="Checking…">Save</SubmitButton>
     </form>
   );
 }

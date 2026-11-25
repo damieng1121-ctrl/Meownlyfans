@@ -4,12 +4,14 @@ import { PostCard } from "./PostCard";
 
 export function PostGrid({
   posts,
+  viewerId,
   hasMore,
   page,
   baseHref,
   empty,
 }: {
   posts: FeedPost[];
+  viewerId: string | null;
   hasMore: boolean;
   page: number;
   baseHref: string;
@@ -23,7 +25,7 @@ export function PostGrid({
     <>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {posts.map((p) => (
-          <PostCard key={p.id} post={p} />
+          <PostCard key={p.id} post={p} viewerId={viewerId} />
         ))}
       </div>
       <nav className="mt-8 flex justify-center gap-3">

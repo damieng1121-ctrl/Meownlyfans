@@ -24,9 +24,14 @@ export default async function UserPage(props: PageProps<"/u/[username]">) {
       _count: { select: { posts: true } },
     },
   });
-  if (!user) notFound();
+  if (!user || (user.bannedAt && !viewer?.isAdmin)) notFound();
   const isMe = viewer?.id === user.id;
-  const { posts, hasMore } = await getPosts({ viewerId: viewer?.id ?? null, where: { authorId: user.id }, page });
+  const { posts, hasMore } = await getPosts({
+    viewerId: viewer?.id ?? null,
+    where: { authorId: user.id },
+    page,
+    includeHidden: isMe || viewer?.isAdmin,
+  });
 
   return (
     <div className="space-y-8">
@@ -35,6 +40,7 @@ export default async function UserPage(props: PageProps<"/u/[username]">) {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-extrabold">{user.displayName}</h1>
           <p className="text-ink-soft">@{user.username} · {user._count.posts} posts</p>
+          {user.bannedAt && <p className="mt-1 text-sm font-semibold text-heart">Suspended account</p>}
           {user.bio && <p className="mt-2 whitespace-pre-wrap">{user.bio}</p>}
         </div>
         {isMe && <Link href="/settings" className="btn-ghost">Edit profile</Link>}
@@ -63,6 +69,7 @@ export default async function UserPage(props: PageProps<"/u/[username]">) {
         <h2 className="mb-3 text-lg font-bold">Posts</h2>
         <PostGrid
           posts={posts}
+          viewerId={viewer?.id ?? null}
           hasMore={hasMore}
           page={page}
           baseHref={`/u/${user.username}`}

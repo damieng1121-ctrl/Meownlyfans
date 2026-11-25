@@ -6,7 +6,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { createSession, destroySession, getCurrentUser } from "@/lib/auth";
-import { saveImage, deleteImage, UploadError } from "@/lib/storage";
+import { checkUpload, storeImage, deleteImage, UploadError } from "@/lib/storage";
+import { checkText, usernameHit } from "@/lib/moderation";
+import { REPORT_REASONS, type ReportReason } from "@/lib/reports";
 import { fail, safeNext, type FormState } from "@/lib/utils";
 
 const MAX_PHOTOS = 6;
@@ -19,6 +21,23 @@ async function mustBeSignedIn() {
 
 function firstIssue(err: z.ZodError) {
   return err.issues[0]?.message ?? "Please check the form.";
+}
+
+async function mustBeAdmin() {
+  const user = await mustBeSignedIn();
+  if (!user.isAdmin) redirect("/");
+  return user;
+}
+
+/** Runs the content check on user-written text; returns an error state or null. */
+async function textProblem(fd: FormData, fields: Record<string, string | null | undefined>): Promise<FormState | null> {
+  const r = await checkText(fields);
+  return r.ok ? null : fail(fd, r.message);
+}
+
+/** Checks then stores one avatar photo. */
+async function uploadAvatar(file: File, requireCat: boolean) {
+  return storeImage(await checkUpload(file, { requireCat }), "avatars");
 }
 
 function getFile(fd: FormData, key: string) {
@@ -43,6 +62,9 @@ export async function signup(_: FormState, fd: FormData): Promise<FormState> {
   const parsed = signupSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return fail(fd, firstIssue(parsed.error));
   const { username, displayName, email, password } = parsed.data;
+  if (usernameHit(username)) return fail(fd, "That username has words that aren't allowed on Meownly Fans.");
+  const bad = await textProblem(fd, { name: displayName });
+  if (bad) return bad;
 
   const taken = await db.user.findFirst({ where: { OR: [{ username }, { email }] } });
   if (taken) {
@@ -63,6 +85,7 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return fail(fd, "Wrong username/email or password.");
   }
+  if (user.bannedAt) return fail(fd, "This account has been suspended for breaking Meownly Fans' rules.");
   await createSession(user.id);
   redirect(safeNext(fd.get("next")));
 }
@@ -86,14 +109,18 @@ export async function createPost(_: FormState, fd: FormData): Promise<FormState>
     return fail(fd, "Pick one of your own cats.");
   }
 
-  const urls: string[] = [];
+  const bad = await textProblem(fd, { caption });
+  if (bad) return bad;
+
+  // Check every photo before storing any of them.
+  let checked;
   try {
-    for (const f of files) urls.push(await saveImage(f, "posts"));
+    checked = await Promise.all(files.map((f) => checkUpload(f, { requireCat: true })));
   } catch (e) {
-    await Promise.all(urls.map(deleteImage));
     if (e instanceof UploadError) return fail(fd, e.message);
     throw e;
   }
+  const urls = await Promise.all(checked.map((c) => storeImage(c, "posts")));
 
   const post = await db.post.create({
     data: {
@@ -136,6 +163,10 @@ export async function addComment(_: FormState, fd: FormData): Promise<FormState>
   const body = String(fd.get("body") ?? "").trim();
   if (!body) return fail(fd, "Write something first.");
   if (body.length > 1000) return fail(fd, "Comments can be up to 1000 characters.");
+  const post = await db.post.findUnique({ where: { id: postId } });
+  if (!post || post.hidden) return fail(fd, "That post no longer exists.");
+  const bad = await textProblem(fd, { comment: body });
+  if (bad) return bad;
 
   if (parentId) {
     const parent = await db.comment.findUnique({ where: { id: parentId } });
@@ -143,7 +174,6 @@ export async function addComment(_: FormState, fd: FormData): Promise<FormState>
     // Keep threads one level deep: replies to replies attach to the top comment.
     await db.comment.create({ data: { postId, authorId: user.id, body, parentId: parent.parentId ?? parent.id } });
   } else {
-    if (!(await db.post.findUnique({ where: { id: postId } }))) return fail(fd, "That post no longer exists.");
     await db.comment.create({ data: { postId, authorId: user.id, body } });
   }
   revalidatePath(`/p/${postId}`);
@@ -153,8 +183,8 @@ export async function addComment(_: FormState, fd: FormData): Promise<FormState>
 export async function deleteComment(commentId: string) {
   const user = await mustBeSignedIn();
   const c = await db.comment.findUnique({ where: { id: commentId }, include: { post: true } });
-  // Comment authors and the post's author can delete.
-  if (!c || (c.authorId !== user.id && c.post.authorId !== user.id)) return;
+  // Comment authors, the post's author and admins can delete.
+  if (!c || (c.authorId !== user.id && c.post.authorId !== user.id && !user.isAdmin)) return;
   await db.comment.delete({ where: { id: c.id } });
   revalidatePath(`/p/${c.postId}`);
 }
@@ -181,12 +211,15 @@ export async function saveCat(_: FormState, fd: FormData): Promise<FormState> {
   const catId = String(fd.get("catId") ?? "") || null;
   const existing = catId ? await db.cat.findFirst({ where: { id: catId, ownerId: user.id } }) : null;
   if (catId && !existing) return fail(fd, "That cat isn't yours.");
+  const { name, breed, age, bio } = parsed.data;
+  const bad = await textProblem(fd, { "cat's name": name, breed, age, bio });
+  if (bad) return bad;
 
   let avatarUrl = existing?.avatarUrl ?? null;
   const avatar = getFile(fd, "avatar");
   if (avatar) {
     try {
-      avatarUrl = await saveImage(avatar, "avatars");
+      avatarUrl = await uploadAvatar(avatar, true);
     } catch (e) {
       if (e instanceof UploadError) return fail(fd, e.message);
       throw e;
@@ -228,12 +261,14 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
   const displayName = String(fd.get("displayName") ?? "").trim().slice(0, 50);
   const bio = String(fd.get("bio") ?? "").trim().slice(0, 300);
   if (!displayName) return fail(fd, "Your name can't be empty.");
+  const bad = await textProblem(fd, { name: displayName, bio });
+  if (bad) return bad;
 
   let avatarUrl = user.avatarUrl;
   const avatar = getFile(fd, "avatar");
   if (avatar) {
     try {
-      avatarUrl = await saveImage(avatar, "avatars");
+      avatarUrl = await uploadAvatar(avatar, false);
     } catch (e) {
       if (e instanceof UploadError) return fail(fd, e.message);
       throw e;
@@ -243,4 +278,94 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
   await db.user.update({ where: { id: user.id }, data: { displayName, bio, avatarUrl } });
   revalidatePath("/", "layout");
   redirect(`/u/${user.username}`);
+}
+
+/* ------------------------------- Reporting -------------------------------- */
+
+const AUTO_HIDE_AFTER = 3;
+
+export async function reportContent(target: { postId?: string; commentId?: string }, reason: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: "signin" as const };
+  if (!REPORT_REASONS.includes(reason as ReportReason)) return { error: "reason" as const };
+
+  const item = target.postId
+    ? await db.post.findUnique({ where: { id: target.postId }, select: { id: true, authorId: true } })
+    : target.commentId
+      ? await db.comment.findUnique({ where: { id: target.commentId }, select: { id: true, authorId: true, postId: true } })
+      : null;
+  if (!item || item.authorId === user.id) return { error: "invalid" as const };
+
+  const where = target.postId ? { postId: item.id } : { commentId: item.id };
+  const existing = await db.report.findFirst({ where: { ...where, reporterId: user.id } });
+  if (existing) {
+    // Reporting again re-opens a report an admin dismissed earlier.
+    await db.report.update({ where: { id: existing.id }, data: { reason, resolvedAt: null } });
+  } else {
+    await db.report.create({ data: { ...where, reporterId: user.id, reason } });
+  }
+
+  // Hide at once for admins, otherwise once enough different people report it.
+  const open = await db.report.count({ where: { ...where, resolvedAt: null } });
+  if (user.isAdmin || open >= AUTO_HIDE_AFTER) {
+    if (target.postId) await db.post.update({ where: { id: item.id }, data: { hidden: true } });
+    else await db.comment.update({ where: { id: item.id }, data: { hidden: true } });
+  }
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
+/* --------------------------------- Admin ---------------------------------- */
+
+export async function adminRemovePost(postId: string) {
+  await mustBeAdmin();
+  const post = await db.post.findUnique({ where: { id: postId }, include: { images: true } });
+  if (!post) return;
+  await db.post.delete({ where: { id: post.id } });
+  await Promise.all(post.images.map((i) => deleteImage(i.url)));
+  revalidatePath("/", "layout");
+}
+
+export async function adminRemoveComment(commentId: string) {
+  await mustBeAdmin();
+  await db.comment.deleteMany({ where: { id: commentId } });
+  revalidatePath("/", "layout");
+}
+
+/** Dismisses the reports and makes the post or comment visible again. */
+export async function adminRestore(target: { postId?: string; commentId?: string }) {
+  await mustBeAdmin();
+  const now = new Date();
+  if (target.postId) {
+    await db.post.updateMany({ where: { id: target.postId }, data: { hidden: false } });
+    await db.report.updateMany({ where: { postId: target.postId, resolvedAt: null }, data: { resolvedAt: now } });
+  } else if (target.commentId) {
+    await db.comment.updateMany({ where: { id: target.commentId }, data: { hidden: false } });
+    await db.report.updateMany({ where: { commentId: target.commentId, resolvedAt: null }, data: { resolvedAt: now } });
+  }
+  revalidatePath("/", "layout");
+}
+
+/** Suspends an account: logs them out, blocks login, hides everything they posted. */
+export async function adminBanUser(userId: string) {
+  const admin = await mustBeAdmin();
+  if (userId === admin.id) return;
+  const now = new Date();
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { bannedAt: now } }),
+    db.session.deleteMany({ where: { userId } }),
+    db.post.updateMany({ where: { authorId: userId }, data: { hidden: true } }),
+    db.comment.updateMany({ where: { authorId: userId }, data: { hidden: true } }),
+    db.report.updateMany({
+      where: { resolvedAt: null, OR: [{ post: { authorId: userId } }, { comment: { authorId: userId } }] },
+      data: { resolvedAt: now },
+    }),
+  ]);
+  revalidatePath("/", "layout");
+}
+
+export async function adminUnbanUser(userId: string) {
+  await mustBeAdmin();
+  await db.user.update({ where: { id: userId }, data: { bannedAt: null } });
+  revalidatePath("/admin");
 }

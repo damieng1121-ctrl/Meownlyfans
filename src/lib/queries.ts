@@ -10,7 +10,7 @@ export function postInclude(viewerId: string | null) {
     author: { select: { username: true, displayName: true, avatarUrl: true } },
     cat: { select: { id: true, name: true, avatarUrl: true } },
     images: { orderBy: { position: "asc" } },
-    _count: { select: { likes: true, comments: true } },
+    _count: { select: { likes: true, comments: { where: { hidden: false } } } },
     likes: { where: { userId: viewerId ?? "" }, select: { userId: true } },
   } satisfies Prisma.PostInclude;
 }
@@ -22,10 +22,12 @@ export async function getPosts(opts: {
   where?: Prisma.PostWhereInput;
   orderBy?: Prisma.PostOrderByWithRelationInput[];
   page?: number;
+  /** Show hidden posts too (a person viewing their own profile, or an admin). */
+  includeHidden?: boolean;
 }) {
   const page = Math.max(1, opts.page ?? 1);
   const rows = await db.post.findMany({
-    where: opts.where,
+    where: opts.includeHidden ? opts.where : { AND: [opts.where ?? {}, { hidden: false }] },
     orderBy: opts.orderBy ?? [{ createdAt: "desc" }],
     include: postInclude(opts.viewerId),
     skip: (page - 1) * PAGE_SIZE,

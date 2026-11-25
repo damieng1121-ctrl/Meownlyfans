@@ -21,12 +21,12 @@ export default async function CatPage(props: PageProps<"/c/[id]">) {
   const cat = await db.cat.findUnique({
     where: { id },
     include: {
-      owner: { select: { username: true, displayName: true } },
+      owner: { select: { username: true, displayName: true, bannedAt: true } },
       _count: { select: { followers: true, posts: true } },
       followers: { where: { userId: user?.id ?? "" }, select: { userId: true } },
     },
   });
-  if (!cat) notFound();
+  if (!cat || (cat.owner.bannedAt && !user?.isAdmin)) notFound();
   const isOwner = user?.id === cat.ownerId;
   const { posts, hasMore } = await getPosts({ viewerId: user?.id ?? null, where: { catId: id }, page });
 
@@ -58,6 +58,7 @@ export default async function CatPage(props: PageProps<"/c/[id]">) {
       </section>
       <PostGrid
         posts={posts}
+        viewerId={user?.id ?? null}
         hasMore={hasMore}
         page={page}
         baseHref={`/c/${cat.id}`}

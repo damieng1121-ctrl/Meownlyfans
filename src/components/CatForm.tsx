@@ -57,7 +57,7 @@ export function CatForm({ cat }: { cat?: Cat }) {
         <textarea id="bio" name="bio" rows={3} maxLength={500} defaultValue={v?.bio ?? cat?.bio} className="input resize-y" placeholder="Loves boxes. Hates Mondays." />
       </div>
       <FormError error={state?.error} />
-      <SubmitButton className="btn-primary w-full py-3">{cat ? "Save changes" : "Add cat"}</SubmitButton>
+      <SubmitButton className="btn-primary w-full py-3" pendingText="Checking…">{cat ? "Save changes" : "Add cat"}</SubmitButton>
     </form>
   );
 }

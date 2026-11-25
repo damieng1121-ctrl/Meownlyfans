@@ -54,6 +54,7 @@ export default async function FeedPage(props: PageProps<"/">) {
 
       <PostGrid
         posts={posts}
+        viewerId={user?.id ?? null}
         hasMore={hasMore}
         page={page}
         baseHref={tab === "latest" ? "/" : `/?tab=${tab}`}

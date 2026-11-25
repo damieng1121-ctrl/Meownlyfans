@@ -15,8 +15,11 @@ model User {
   displayName  String
   bio          String    @default("")
   avatarUrl    String?
+  isAdmin      Boolean   @default(false)
+  bannedAt     DateTime?
   createdAt    DateTime  @default(now())
   sessions     Session[]
+  reports      Report[]
   cats         Cat[]
   posts        Post[]
   likes        Like[]
@@ -57,10 +60,13 @@ model Post {
   catId     String?
   cat       Cat?        @relation(fields: [catId], references: [id], onDelete: SetNull)
   caption   String      @default("")
+  /// Hidden from everyone but the author and admins (reported, or removed by an admin)
+  hidden    Boolean     @default(false)
   createdAt DateTime    @default(now())
   images    PostImage[]
   likes     Like[]
   comments  Comment[]
+  reports   Report[]
 
   @@index([createdAt])
   @@index([catId])
@@ -98,7 +104,9 @@ model Comment {
   parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[] @relation("Replies")
   body      String
+  hidden    Boolean   @default(false)
   createdAt DateTime  @default(now())
+  reports   Report[]
 
   @@index([postId, createdAt])
 }
@@ -120,4 +128,22 @@ model StoredImage {
   contentType String
   data        Bytes
   createdAt   DateTime @default(now())
+}
+
+/// A user flagging a post or comment. Three reports from different people hide it until an admin reviews it.
+model Report {
+  id         String    @id @default(cuid())
+  reporterId String
+  reporter   User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  postId     String?
+  post       Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId  String?
+  comment    Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reason     String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([reporterId, postId])
+  @@unique([reporterId, commentId])
+  @@index([resolvedAt])
 }

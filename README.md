@@ -28,6 +28,21 @@ npm run db:push             # creates the tables
 npm run dev                 # http://localhost:3000
 ```
 
+## Keeping it clean
+
+- **Word filter** (always on): blocks explicit words, slurs and adult-site links in
+  usernames, names, captions, comments and bios. It tolerates l33t-speak and
+  spaced-out letters, and leaves everyday cat words ("pussycat", "Maine Coon") alone.
+- **AI checks** (when `ANTHROPIC_API_KEY` is set): Claude reviews every photo before
+  it's saved and blocks sexual content, gore, animal cruelty, hate and the like.
+  Post photos and cat profile photos must show a cat. If a photo can't be checked
+  it isn't accepted. Captions, comments and bios get a context-aware text check too.
+  Still photos only: GIFs are turned into a still by the browser.
+- **Reports**: anyone can report a post or comment; 3 reports hide it until an
+  admin looks. Admins review at `/admin` (remove, restore, suspend accounts).
+  Make someone an admin with:
+  `UPDATE "User" SET "isAdmin" = true WHERE username = 'their_username';`
+
 ## Photo storage
 
 Browsers shrink photos before upload (longest side 1600px). The server then
